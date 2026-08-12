@@ -1,0 +1,6 @@
+schema_version: "0.1"
+robot:
+  name: test_missing_kind
+  capabilities:
+    head:
+      description: 缺少 kind 字段

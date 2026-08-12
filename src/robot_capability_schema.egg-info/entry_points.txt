@@ -1,0 +1,2 @@
+[console_scripts]
+robot-cap = robot_capability_schema.cli:main

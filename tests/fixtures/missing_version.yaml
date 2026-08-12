@@ -1,0 +1,5 @@
+robot:
+  name: test_no_version
+  capabilities:
+    head:
+      kind: pan_tilt

@@ -1,0 +1,12 @@
+schema_version: "0.1"
+robot:
+  name: test_robot_meta
+  manufacturer: TestCo
+  model: T-1
+  capabilities:
+    camera:
+      kind: rgb_camera
+      properties:
+        - name: fps
+          value: 30
+          unit: Hz

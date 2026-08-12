@@ -1,0 +1,45 @@
+schema_version: "0.1"
+robot:
+  name: demo_robot
+  description: 演示用机器人，包含云台和相机能力
+  manufacturer: Acme Robotics
+  model: Demo-1
+
+  capabilities:
+    head:
+      kind: pan_tilt
+      description: 头部云台，可控制 yaw 和 pitch 角度
+      constraints:
+        yaw_min: -90
+        yaw_max: 90
+        pitch_min: -30
+        pitch_max: 60
+
+    camera:
+      kind: rgb_camera
+      description: 前置 RGB 相机
+      properties:
+        - name: width
+          value: 1280
+          unit: px
+        - name: height
+          value: 720
+          unit: px
+        - name: fps
+          value: 30
+          unit: Hz
+      constraints:
+        width_min: 320
+        width_max: 1920
+        height_min: 240
+        height_max: 1080
+        fps_min: 10
+        fps_max: 60
+
+    gesture:
+      kind: discrete_action
+      description: 手势动作，可执行预定义动作
+      actions:
+        - wave
+        - point
+        - nod

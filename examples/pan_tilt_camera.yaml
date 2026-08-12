@@ -1,0 +1,32 @@
+schema_version: "0.1"
+robot:
+  name: camera_drone
+  description: 搭载云台相机的无人机
+
+  capabilities:
+    gimbal:
+      kind: pan_tilt
+      description: 三轴云台的俯仰和偏航控制
+      constraints:
+        yaw_min: -180
+        yaw_max: 180
+        pitch_min: -90
+        pitch_max: 30
+
+    front_camera:
+      kind: rgb_camera
+      description: 前置航拍相机
+      properties:
+        - name: resolution
+          value: 4
+          unit: MP
+        - name: fps
+          value: 30
+          unit: Hz
+      constraints:
+        width_min: 640
+        width_max: 3840
+        height_min: 480
+        height_max: 2160
+        fps_min: 15
+        fps_max: 60
