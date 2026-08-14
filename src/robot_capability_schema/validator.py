@@ -7,22 +7,7 @@ from __future__ import annotations
 
 import logging
 
-from .models import (
-    CameraConstraint,
-    Constraint,
-    PanTiltConstraint,
-)
-
 logger = logging.getLogger(__name__)
-
-# 已知能力类型的约束类映射
-CONSTRAINT_MAP: dict[str, type[Constraint]] = {
-    "pan_tilt": PanTiltConstraint,
-    "rgb_camera": CameraConstraint,
-}
-
-# 已知能力类型列表（用于检查未知 kind）
-KNOWN_KINDS = set(CONSTRAINT_MAP.keys())
 
 
 class ValidationResult:
@@ -109,25 +94,34 @@ class RobotCapabilityValidator:
             self._validate_constraints(name, kind, constraints, result)
 
         # 未知 kind 警告
-        if kind not in KNOWN_KINDS:
+        if kind not in ("pan_tilt", "rgb_camera", "discrete_action"):
             result.add_warning(f"未知的 capability kind: {kind}（已放行）")
 
     def _validate_constraints(
         self, cap_name: str, kind: str, constraints: dict, result: ValidationResult
     ) -> None:
-        """校验约束条件。"""
-        constraint_cls = CONSTRAINT_MAP.get(kind)
-        if constraint_cls is None:
-            # 未知类型不校验约束细节
-            return
+        """校验已知类型的约束条件。"""
+        if kind == "pan_tilt":
+            yaw_min = constraints.get("yaw_min")
+            yaw_max = constraints.get("yaw_max")
+            pitch_min = constraints.get("pitch_min")
+            pitch_max = constraints.get("pitch_max")
+            if yaw_min is not None and yaw_max is not None and yaw_max <= yaw_min:
+                result.add_error(f"capabilities.{cap_name}.constraints.yaw_max must be greater than yaw_min")
+            if pitch_min is not None and pitch_max is not None and pitch_max <= pitch_min:
+                result.add_error(f"capabilities.{cap_name}.constraints.pitch_max must be greater than pitch_min")
 
-        try:
-            constraint = constraint_cls(**constraints)
-        except Exception:
-            # Pydantic 已抛出详细错误，这里简化处理
-            return
+        elif kind == "rgb_camera":
+            width_min = constraints.get("width_min")
+            width_max = constraints.get("width_max")
+            height_min = constraints.get("height_min")
+            height_max = constraints.get("height_max")
+            fps_min = constraints.get("fps_min")
+            fps_max = constraints.get("fps_max")
+            if width_min is not None and width_max is not None and width_max <= width_min:
+                result.add_error(f"capabilities.{cap_name}.constraints.width_max must be greater than width_min")
+            if height_min is not None and height_max is not None and height_max <= height_min:
+                result.add_error(f"capabilities.{cap_name}.constraints.height_max must be greater than height_min")
+            if fps_min is not None and fps_max is not None and fps_max <= fps_min:
+                result.add_error(f"capabilities.{cap_name}.constraints.fps_max must be greater than fps_min")
 
-        errors: list[str] = []
-        constraint.validate_range(errors)
-        for err in errors:
-            result.add_error(f"capabilities.{cap_name}.constraints.{err}")
