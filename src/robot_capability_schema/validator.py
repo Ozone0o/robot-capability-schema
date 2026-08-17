@@ -107,9 +107,15 @@ class RobotCapabilityValidator:
             pitch_min = constraints.get("pitch_min")
             pitch_max = constraints.get("pitch_max")
             if yaw_min is not None and yaw_max is not None and yaw_max <= yaw_min:
-                result.add_error(f"capabilities.{cap_name}.constraints.yaw_max must be greater than yaw_min")
+                result.add_error(
+                    f"capabilities.{cap_name}.constraints.yaw_max "
+                    f"must be greater than yaw_min"
+                )
             if pitch_min is not None and pitch_max is not None and pitch_max <= pitch_min:
-                result.add_error(f"capabilities.{cap_name}.constraints.pitch_max must be greater than pitch_min")
+                result.add_error(
+                    f"capabilities.{cap_name}.constraints.pitch_max "
+                    f"must be greater than pitch_min"
+                )
 
         elif kind == "rgb_camera":
             width_min = constraints.get("width_min")
@@ -119,9 +125,18 @@ class RobotCapabilityValidator:
             fps_min = constraints.get("fps_min")
             fps_max = constraints.get("fps_max")
             if width_min is not None and width_max is not None and width_max <= width_min:
-                result.add_error(f"capabilities.{cap_name}.constraints.width_max must be greater than width_min")
+                result.add_error(
+                    f"capabilities.{cap_name}.constraints.width_max "
+                    f"must be greater than width_min"
+                )
             if height_min is not None and height_max is not None and height_max <= height_min:
-                result.add_error(f"capabilities.{cap_name}.constraints.height_max must be greater than height_min")
+                result.add_error(
+                    f"capabilities.{cap_name}.constraints.height_max "
+                    f"must be greater than height_min"
+                )
             if fps_min is not None and fps_max is not None and fps_max <= fps_min:
-                result.add_error(f"capabilities.{cap_name}.constraints.fps_max must be greater than fps_min")
+                result.add_error(
+                    f"capabilities.{cap_name}.constraints.fps_max "
+                    f"must be greater than fps_min"
+                )
 

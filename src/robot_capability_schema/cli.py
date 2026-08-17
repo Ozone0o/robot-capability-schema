@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-
 import argparse
 import logging
 import sys
@@ -17,6 +16,7 @@ from pathlib import Path
 from .docs_generator import generate_markdown
 from .formatter import format_list, format_validation
 from .parser import ParseError, RobotCapabilityParser
+from .python_generator import generate_python
 from .validator import RobotCapabilityValidator
 
 logger = logging.getLogger("robot_capability_schema")
@@ -84,7 +84,26 @@ def cmd_docs(args: argparse.Namespace) -> None:
         print(md)
 
 
-    args.func(args)
+def cmd_generate_python(args: argparse.Namespace) -> None:
+    """执行 generate-python 命令。"""
+    path = _ensure_yaml(Path(args.yaml_file))
+    parser = RobotCapabilityParser()
+
+    try:
+        data = parser.parse(path)
+    except ParseError as exc:
+        print(f"解析失败: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    code = generate_python(data)
+    output_path = args.output or None
+    if output_path:
+        Path(output_path).write_text(code, encoding="utf-8")
+        print(f"Python 接口已生成: {output_path}")
+    else:
+        print(code)
+
+
 
 
 def main():
@@ -107,6 +126,12 @@ def main():
     docs_parser.add_argument("yaml_file", type=str, help="Path to YAML file")
     docs_parser.add_argument("-o", "--output", type=str, help="Output file path")
     docs_parser.set_defaults(command="docs", func=cmd_docs)
+
+    # generate-python
+    gen_parser = subparsers.add_parser("generate-python", help="Generate Python interface skeleton")
+    gen_parser.add_argument("yaml_file", type=str, help="Path to YAML file")
+    gen_parser.add_argument("-o", "--output", type=str, help="Output file path")
+    gen_parser.set_defaults(command="generate-python", func=cmd_generate_python)
 
     args = parser.parse_args()
     if not args.command:
