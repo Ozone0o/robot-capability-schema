@@ -85,3 +85,36 @@ def cmd_docs(args: argparse.Namespace) -> None:
 
 
     args.func(args)
+
+
+def main():
+    """CLI entry point."""
+    parser = argparse.ArgumentParser(description="Robot Capability Schema CLI")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # validate
+    validate_parser = subparsers.add_parser("validate", help="Validate YAML config")
+    validate_parser.add_argument("yaml_file", type=str, help="Path to YAML file")
+    validate_parser.set_defaults(command="validate", func=cmd_validate)
+
+    # list
+    list_parser = subparsers.add_parser("list", help="List capabilities")
+    list_parser.add_argument("yaml_file", type=str, help="Path to YAML file")
+    list_parser.set_defaults(command="list", func=cmd_list)
+
+    # docs
+    docs_parser = subparsers.add_parser("docs", help="Generate Markdown docs")
+    docs_parser.add_argument("yaml_file", type=str, help="Path to YAML file")
+    docs_parser.add_argument("-o", "--output", type=str, help="Output file path")
+    docs_parser.set_defaults(command="docs", func=cmd_docs)
+
+    args = parser.parse_args()
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
