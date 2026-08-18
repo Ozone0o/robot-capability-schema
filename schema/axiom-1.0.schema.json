@@ -81,7 +81,15 @@
             "sensors": {"$ref": "#/$defs/namedSection"},
             "actuators": {"$ref": "#/$defs/namedSection"},
             "skills": {"$ref": "#/$defs/namedSection"},
-            "limitations": {"$ref": "#/$defs/namedSection"}
+            "limitations": {
+              "oneOf": [
+                {"$ref": "#/$defs/namedSection"},
+                {
+                  "type": "array",
+                  "items": {"$ref": "#/$defs/entryOrValue"}
+                }
+              ]
+            }
           },
           "additionalProperties": {"$ref": "#/$defs/entryOrValue"}
         }
