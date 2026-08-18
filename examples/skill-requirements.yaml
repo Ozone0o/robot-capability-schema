@@ -1,0 +1,7 @@
+axiom: "1.0"
+
+skill:
+  name: pick_and_place
+  requires:
+    all: [camera, arm]
+    any: [lidar, depth_camera]

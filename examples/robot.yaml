@@ -1,0 +1,68 @@
+axiom: "1.0"
+
+robot:
+  name: warehouse-scout
+  manufacturer: Axiom Robotics
+  model: Scout-1
+  description: Autonomous inspection robot for indoor warehouses.
+
+hardware:
+  sensors:
+    camera:
+      type: rgb_camera
+      description: Forward-facing RGB camera.
+      resolution: 1920x1080
+      fps: 30
+  actuators:
+    arm:
+      type: six_dof_arm
+      description: Six degree-of-freedom manipulator.
+      payload_kg: 5
+
+capabilities:
+  sensors:
+    camera:
+      type: rgb_camera
+      description: Provides RGB frames to inspection skills.
+  actuators:
+    arm:
+      type: six_dof_arm
+      description: Executes safe arm trajectories.
+  skills:
+    inspect_shelf:
+      description: Capture and inspect a shelf image.
+      requires: [camera]
+      inputs:
+        - name: shelf_id
+          type: string
+      outputs:
+        - name: report
+          type: object
+    pick_and_place:
+      description: Pick an object and place it at a target pose.
+      requires: [camera, arm]
+      inputs:
+        - name: object_id
+          type: string
+        - name: target_pose
+          type: object
+  limitations:
+    - name: indoor_only
+      description: Not rated for rain or unstructured outdoor terrain.
+
+interfaces:
+  - name: ros2
+    protocol: ros2
+    namespace: /warehouse_scout
+  - name: http
+    protocol: http
+    endpoint: http://robot.local:8080
+
+constraints:
+  safety:
+    - Stop the arm when a person enters the operating envelope.
+    - Maximum arm payload is 5 kg.
+
+requirements:
+  - power: 24V DC
+  - network: warehouse VLAN

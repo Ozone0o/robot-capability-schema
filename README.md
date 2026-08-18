@@ -1,213 +1,240 @@
-# robot-capability-schema
+# Axiom
 
-不同机器人提供的能力不一样。这个项目让你用一个 YAML 文件告诉其他程序：这台机器人有哪些能力、参数范围是多少。
+## The capability contract for robots.
 
-比如：这台机器人有一个云台，yaw 范围是 -90 到 90 度；有一个相机，分辨率 1280x720，30 帧。其他程序读了这个 YAML 就知道怎么和这台机器人交互。
+Axiom is an open capability specification framework for robots.
 
-## 安装
+> A robot should describe what it can do in a machine-readable way.
 
-```bash
-pip install robot-capability-schema
+```text
+robot.yaml
+    ↓
+validation
+    ↓
+documentation
+    ↓
+code generation
+    ↓
+compatibility checking
 ```
 
-或使用开发模式安装：
+Axiom is a robot capability contract: a shared language for robot companies,
+robot platforms, and AI agents to discover what a robot can do, what it needs,
+how it can be invoked, and where it must not operate. It is inspired by the
+role OpenAPI plays for Web APIs, with a schema designed around hardware,
+skills, interfaces, limitations, and safety.
+
+## A contract in one file
+
+```yaml
+axiom: "1.0"
+
+robot:
+  name: warehouse-scout
+  manufacturer: Axiom Robotics
+  model: Scout-1
+  description: Autonomous inspection robot for indoor warehouses.
+
+hardware:
+  sensors:
+    camera:
+      type: rgb_camera
+      description: Forward-facing RGB camera.
+      resolution: 1920x1080
+      fps: 30
+  actuators:
+    arm:
+      type: six_dof_arm
+      payload_kg: 5
+
+capabilities:
+  skills:
+    inspect_shelf:
+      description: Capture and inspect a shelf image.
+      requires: [camera]
+      inputs:
+        - name: shelf_id
+          type: string
+      outputs:
+        - name: report
+          type: object
+  limitations:
+    - name: indoor_only
+      description: Not rated for rain or unstructured outdoor terrain.
+
+interfaces:
+  - name: ros2
+    protocol: ros2
+    namespace: /warehouse_scout
+  - name: http
+    protocol: http
+    endpoint: http://robot.local:8080
+
+constraints:
+  safety:
+    - Stop the arm when a person enters the operating envelope.
+    - Maximum arm payload is 5 kg.
+
+requirements:
+  - power: 24V DC
+  - network: warehouse VLAN
+```
+
+The schema accepts both mapping and list notation. For example, the same
+sensor can be written as `camera: {type: rgb_camera}` or as
+`- name: camera\n  type: rgb_camera`. Names are stable identifiers; descriptions,
+parameters, and vendor extensions are ordinary YAML values. The normative
+1.0 envelope is strict about top-level names; use an `x-...` field for a
+portable extension. The Python validator's explicit `allow_extensions=True`
+option is a migration escape hatch for private fields.
+
+## CLI
+
+Install the published package:
+
+```bash
+pip install axiom
+```
+
+Install the development checkout:
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-## 第一个 YAML
+Create a contract and run the toolchain:
 
-创建一个 `robot.yaml`：
+```bash
+axiom init robot.yaml
+axiom validate robot.yaml
+axiom lint robot.yaml
+axiom docs robot.yaml -o robot.md
+axiom generate robot.yaml -o robot_protocol.py
+axiom diff robot-v1.yaml robot-v2.yaml
+axiom match robot.yaml skill-requirements.yaml
+```
+
+The command set is intentionally small and composable:
+
+| Command | Purpose |
+| --- | --- |
+| `axiom init` | Create a starter contract. |
+| `axiom validate` | Check the document envelope, types, ranges, and requirements. |
+| `axiom lint` | Find portability, documentation, and safety-quality issues. |
+| `axiom docs` | Generate Markdown capability documentation. |
+| `axiom generate` | Generate Python, TypeScript, or JSON integration artifacts. |
+| `axiom diff` | Compare semantic hardware and capability changes. |
+| `axiom match` | Check a robot against required capabilities. |
+
+Every command that reports a result can be used in CI. `validate --json`,
+`lint --json`, `diff --json`, and `match --json` provide machine-readable
+output for platforms and agents.
+
+### Compatibility checking
+
+A skill requirement manifest can be as small as:
 
 ```yaml
-schema_version: "0.1"
-robot:
-  name: demo_robot
-  capabilities:
-    head:
-      kind: pan_tilt
-      description: 头部云台
-      constraints:
-        yaw_min: -90
-        yaw_max: 90
-        pitch_min: -30
-        pitch_max: 60
-
-    camera:
-      kind: rgb_camera
-      properties:
-        - name: width
-          value: 1280
-          unit: px
-        - name: fps
-          value: 30
-          unit: Hz
+axiom: "1.0"
+skill:
+  name: pick_and_place
+  requires:
+    - camera
+    - arm
 ```
 
-## 命令
-
-### validate - 校验配置
+Run it against a robot contract:
 
 ```bash
-robot-cap validate robot.yaml
+axiom match robot.yaml skill-requirements.yaml
 ```
 
-合法输出：
+The result is explicit:
 
-```
-校验通过: 配置合法
-```
-
-非法输出：
-
-```
-校验失败: 发现 2 个错误
-
-  1. capabilities.head.constraints.yaw_max must be greater than yaw_min
-  2. capabilities.camera.properties 包含重复属性名: fps
+```text
+Incompatible
+Required capabilities: camera, arm
+Matched: camera
+Missing requirements:
+  - arm
 ```
 
-### list - 列出能力
+Requirements also support optional capabilities and alternatives:
 
-```bash
-robot-cap list robot.yaml
+```yaml
+requires:
+  all: [camera, arm]
+  any: [lidar, depth_camera]
 ```
 
-输出：
+## Schema design
 
-```
-能力列表 (共 2 个):
+The Axiom 1.0 envelope consists of:
 
-  head
-    kind: pan_tilt
-    描述: 头部云台
-    约束: yaw_min=-90, yaw_max=90, pitch_min=-30, pitch_max=60
-
-  camera
-    kind: rgb_camera
-    描述: <空>
-    属性: width=1280, fps=30
-```
-
-### docs - 生成 Markdown 文档
-
-```bash
-robot-cap docs robot.yaml                    # 输出到终端
-robot-cap docs robot.yaml -o docs.md         # 输出到文件
-```
-
-### generate-python - 生成 Python 接口骨架
-
-```bash
-robot-cap generate-python robot.yaml                   # 输出到终端
-robot-cap generate-python robot.yaml -o interfaces.py  # 输出到文件
-```
-
-生成类似代码：
-
-```python
-class RobotCapabilities(Protocol):
-    """demo_robot 的能力协议。"""
-
-    def set_head(self, yaw: float, pitch: float) -> None:
-        """设置云台角度。"""
-        ...
-
-    def capture_camera(self, width: int = 1280, height: int = 720, fps: int = 30) -> bytes:
-        """拍摄一张 RGB 图片。"""
-        ...
-```
-
-## Schema 字段说明
-
-### 顶层字段
-
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `schema_version` | 是 | Schema 版本号，当前支持 `"0.1"` |
-| `robot` | 是 | 机器人元信息和能力定义 |
-
-### robot 字段
-
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `name` | 是 | 机器人名称 |
-| `description` | 否 | 简要描述 |
-| `manufacturer` | 否 | 制造商 |
-| `model` | 否 | 型号 |
-| `capabilities` | 是 | 能力字典，不能为空 |
-
-### capability 字段
-
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `kind` | 是 | 能力类型，如 `pan_tilt`、`rgb_camera`、`discrete_action` |
-| `description` | 否 | 能力描述 |
-| `properties` | 否 | 属性列表，每项含 `name`、`value`、`unit` |
-| `constraints` | 否 | 约束条件，格式依赖 `kind` |
-| `actions` | 否 | 可执行动作列表（仅 `discrete_action`） |
-| `inputs` | 否 | 输入参数列表 |
-| `outputs` | 否 | 输出参数列表 |
-| `metadata` | 否 | 额外元信息，任意键值对 |
-
-## 定义新的 capability kind
-
-`kind` 可以是任意非空字符串。已知的 `kind` 有：
-
-- `pan_tilt` - 云台，约束含 `yaw_min/max`、`pitch_min/max`
-- `rgb_camera` - RGB 相机，约束含 `width_min/max`、`height_min/max`、`fps_min/max`
-
-未知的 `kind` 不会报错，只会产生一条警告。约束校验只在已知 `kind` 时执行。
-
-## 扩展 Validator
-
-增加新的约束类型：
-
-1. 在 `models.py` 中添加新的 Constraint 子类
-2. 在 `validator.py` 的 `CONSTRAINT_MAP` 中注册新的 kind 映射
-3. 在 `examples/` 中添加示例
-4. 在 `tests/test_validator.py` 中添加测试
-
-## 修改输出格式
-
-- 文本输出在 `formatter.py`
-- Markdown 输出在 `docs_generator.py`
-- Python 代码在 `python_generator.py`
-
-## 升级 schema_version
-
-当需要引入不兼容变更时，递增版本号：
-
-1. 修改 `parser.py` 中的 `SUPPORTED_VERSIONS`
-2. 在 `models.py` 中适配新版本的字段
-3. 更新所有示例和测试
-4. 保持旧版本解析兼容（如需要）
-
-## 开发者指南
-
-修改代码时注意以下文件职责：
-
-| 文件 | 职责 |
+| Section | Meaning |
 | --- | --- |
-| `models.py` | 数据结构定义（Pydantic Model） |
-| `parser.py` | YAML 解析和基础检查 |
-| `validator.py` | 规则检查和错误收集 |
-| `formatter.py` | CLI 文本输出格式化 |
-| `docs_generator.py` | Markdown 文档生成 |
-| `python_generator.py` | Python 接口骨架生成 |
-| `cli.py` | 命令行入口和子命令 |
+| `robot` | Identity and human-facing metadata. `name` is required. |
+| `hardware` | Physical sensors, actuators, compute, and platform components. |
+| `capabilities` | Machine-usable sensors, actuators, skills, and limitations. |
+| `interfaces` | Protocols and endpoints used to invoke or observe capabilities. |
+| `constraints` | Operating, environmental, and safety constraints. |
+| `requirements` | Dependencies such as power, network, calibration, or permissions. |
 
-> 增加字段时不要只修改 parser，要同时更新 model、validator、schema example 和 tests。
+The standard categories are `sensors`, `actuators`, `skills`, and
+`limitations`. A skill may declare `requires`, `inputs`, `outputs`, `actions`,
+and constraints. Implementations may add `x-...` extension fields without
+changing the core contract.
 
-## 运行测试
+The normative JSON Schema is available at
+[`schema/axiom-1.0.schema.json`](schema/axiom-1.0.schema.json).
+
+## Architecture
+
+Axiom is split into small layers so a platform can embed only what it needs:
+
+```text
+axiom-schema      parse and normalize the contract
+       ↓
+axiom-core        public document and capability model
+       ↓
+axiom-validator   validation and lint diagnostics
+       ↓
+axiom-codegen     Python, TypeScript, and integration artifacts
+       ↓
+axiom-registry    storage/query boundary for robot catalogs
+```
+
+In this reference implementation these layers are exposed as the modules
+`axiom.schema`, `axiom.core`, `axiom.validator`, `axiom.codegen`, and
+`axiom.registry`. The registry is storage-agnostic so a hosted ecosystem can
+add HTTP, database, or signed-artifact adapters later.
+
+## Ecosystem direction
+
+Axiom is intended to become shared infrastructure between:
+
+- robot manufacturers publishing capability contracts;
+- robot platforms discovering and scheduling compatible robots;
+- AI agents selecting tools based on explicit capabilities and requirements;
+- SDKs generating typed interfaces and documentation from the same source;
+- CI systems reviewing capability changes with semantic diffs.
+
+The contract is the source of truth. YAML is only the authoring format; the
+same document can be validated, indexed, rendered, matched, or transformed
+without a human guessing what the robot supports.
+
+## Package naming
+
+The package and executable are both `axiom`. Contracts use `axiom: "1.0"` and
+the top-level sections above; all tooling is released through this canonical
+surface.
+
+## Development
 
 ```bash
 pytest tests/ -v
-```
-
-## 代码检查
-
-```bash
 ruff check src/ tests/
+python -m axiom --help
 ```
+
+Axiom is released under the MIT License.

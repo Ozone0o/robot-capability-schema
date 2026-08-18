@@ -1,130 +1,80 @@
-"""校验器测试。"""
+"""Tests for normative-schema and semantic validation."""
+
+from __future__ import annotations
+
+from axiom.validator import AxiomValidator
 
 
-from robot_capability_schema.validator import RobotCapabilityValidator
+def contract(capabilities: dict) -> dict:
+    return {
+        "axiom": "1.0",
+        "robot": {"name": "test"},
+        "capabilities": capabilities,
+    }
 
 
-class TestValidateValid:
-    """测试合法配置校验。"""
-
-    def test_valid_simple(self):
-        data = {
-            "schema_version": "0.1",
-            "robot": {
-                "name": "test",
-                "capabilities": {
-                    "head": {
-                        "kind": "pan_tilt",
-                        "constraints": {
-                            "yaw_min": -90,
-                            "yaw_max": 90,
-                            "pitch_min": -30,
-                            "pitch_max": 60,
-                        },
-                    },
-                },
-            },
-        }
-        result = RobotCapabilityValidator().validate(data)
-        assert result.is_valid
-
-    def test_valid_unknown_kind(self):
-        data = {
-            "schema_version": "0.1",
-            "robot": {
-                "name": "test",
-                "capabilities": {
-                    "arm": {"kind": "multi_joint_arm"},
-                },
-            },
-        }
-        result = RobotCapabilityValidator().validate(data)
-        assert result.is_valid
-        assert len(result.warnings) > 0
+def test_valid_canonical_contract() -> None:
+    result = AxiomValidator().validate(
+        contract({"sensors": {"camera": {"type": "rgb_camera"}}})
+    )
+    assert result.is_valid
 
 
-class TestValidateErrors:
-    """测试非法配置校验。"""
-
-    def test_constraints_invalid_range(self):
-        data = {
-            "schema_version": "0.1",
-            "robot": {
-                "name": "test",
-                "capabilities": {
-                    "head": {
-                        "kind": "pan_tilt",
-                        "constraints": {
-                            "yaw_min": 90,
-                            "yaw_max": -90,
-                            "pitch_min": -30,
-                            "pitch_max": 60,
-                        },
-                    },
-                },
-            },
-        }
-        result = RobotCapabilityValidator().validate(data)
-        assert not result.is_valid
-        assert any("yaw_max must be greater than yaw_min" in e for e in result.errors)
-
-    def test_duplicate_property_name(self):
-        data = {
-            "schema_version": "0.1",
-            "robot": {
-                "name": "test",
-                "capabilities": {
+def test_duplicate_property_name_is_rejected() -> None:
+    result = AxiomValidator().validate(
+        contract(
+            {
+                "sensors": {
                     "camera": {
-                        "kind": "rgb_camera",
+                        "type": "rgb_camera",
                         "properties": [
                             {"name": "fps", "value": 30},
                             {"name": "fps", "value": 60},
                         ],
-                    },
-                },
-            },
-        }
-        result = RobotCapabilityValidator().validate(data)
-        assert not result.is_valid
-        assert any("重复属性名" in e for e in result.errors)
+                    }
+                }
+            }
+        )
+    )
+    assert not result.is_valid
+    assert any("duplicate name" in error for error in result.errors)
 
-    def test_empty_action_string(self):
-        data = {
-            "schema_version": "0.1",
-            "robot": {
-                "name": "test",
-                "capabilities": {
-                    "gesture": {
-                        "kind": "discrete_action",
-                        "actions": ["wave", "", "point"],
-                    },
-                },
-            },
-        }
-        result = RobotCapabilityValidator().validate(data)
-        assert not result.is_valid
-        assert any("actions[1]" in e for e in result.errors)
 
-    def test_camera_constraint_invalid(self):
-        data = {
-            "schema_version": "0.1",
-            "robot": {
-                "name": "test",
-                "capabilities": {
-                    "cam": {
-                        "kind": "rgb_camera",
-                        "constraints": {
-                            "width_min": 1920,
-                            "width_max": 640,
-                            "height_min": 1,
-                            "height_max": 1080,
-                            "fps_min": 1,
-                            "fps_max": 120,
-                        },
-                    },
-                },
-            },
-        }
-        result = RobotCapabilityValidator().validate(data)
-        assert not result.is_valid
-        assert any("width_max must be greater" in e for e in result.errors)
+def test_invalid_range_is_rejected() -> None:
+    result = AxiomValidator().validate(
+        contract(
+            {
+                "actuators": {
+                    "head": {
+                        "constraints": {"yaw_min": 90, "yaw_max": -90}
+                    }
+                }
+            }
+        )
+    )
+    assert not result.is_valid
+    assert any("yaw_max must be greater" in error for error in result.errors)
+
+
+def test_unknown_top_level_field_requires_explicit_extension() -> None:
+    document = contract({})
+    document["vendor_field"] = True
+    strict = AxiomValidator().validate(document)
+    relaxed = AxiomValidator(allow_extensions=True).validate(document)
+    assert not strict.is_valid
+    assert relaxed.is_valid
+
+
+def test_x_extension_is_allowed() -> None:
+    document = contract({})
+    document["x-vendor"] = {"firmware": "1.2"}
+    assert AxiomValidator().validate(document).is_valid
+
+
+def test_normative_schema_rejects_unknown_top_level_field() -> None:
+    document = contract({})
+    document["vendor_field"] = True
+
+    result = AxiomValidator().validate(document)
+
+    assert any("vendor_field" in error for error in result.errors)

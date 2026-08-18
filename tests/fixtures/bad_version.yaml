@@ -1,6 +1,0 @@
-schema_version: "9.9"
-robot:
-  name: test_bad_version
-  capabilities:
-    head:
-      kind: pan_tilt

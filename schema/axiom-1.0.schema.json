@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://axiom-robot.org/schema/1.0/axiom.schema.json",
+  "title": "Axiom Robot Capability Contract",
+  "description": "The machine-readable capability contract for a robot.",
+  "type": "object",
+  "required": ["axiom", "robot", "capabilities"],
+  "properties": {
+    "axiom": {
+      "const": "1.0",
+      "description": "Axiom specification version."
+    },
+    "robot": {
+      "$ref": "#/$defs/robot"
+    },
+    "hardware": {
+      "$ref": "#/$defs/namedSection"
+    },
+    "capabilities": {
+      "$ref": "#/$defs/capabilities"
+    },
+    "interfaces": {
+      "oneOf": [
+        {"type": "array", "items": {"$ref": "#/$defs/interface"}},
+        {"$ref": "#/$defs/namedSection"}
+      ]
+    },
+    "constraints": {
+      "type": ["object", "array", "string"]
+    },
+    "requirements": {
+      "$ref": "#/$defs/requirementExpression"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "extensions": {
+      "type": "object"
+    },
+    "skill": {
+      "type": "object"
+    },
+    "requires": {
+      "$ref": "#/$defs/requirementExpression"
+    },
+    "version": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    }
+  },
+  "patternProperties": {
+    "^x-": {}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "robot": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "manufacturer": {"type": "string"},
+        "model": {"type": "string"},
+        "description": {"type": "string"},
+        "has": {
+          "type": ["array", "object", "string"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {"$ref": "#/$defs/entry"}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sensors": {"$ref": "#/$defs/namedSection"},
+            "actuators": {"$ref": "#/$defs/namedSection"},
+            "skills": {"$ref": "#/$defs/namedSection"},
+            "limitations": {"$ref": "#/$defs/namedSection"}
+          },
+          "additionalProperties": {"$ref": "#/$defs/entryOrValue"}
+        }
+      ]
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/entryOrValue"}
+    },
+    "namedSection": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/entryOrValue"}
+    },
+    "entryOrValue": {
+      "oneOf": [
+        {"$ref": "#/$defs/entry"},
+        {"type": "array"},
+        {"type": "string"},
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "null"}
+      ]
+    },
+    "entry": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "minLength": 1},
+        "type": {"type": "string"},
+        "category": {"type": "string"},
+        "kind": {"type": "string"},
+        "description": {"type": "string"},
+        "requires": {"$ref": "#/$defs/requirementExpression"},
+        "requirements": {"$ref": "#/$defs/requirementExpression"},
+        "inputs": {"type": "array"},
+        "outputs": {"type": "array"},
+        "actions": {"type": "array"},
+        "constraints": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
+    "interface": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "$ref": "#/$defs/entry",
+          "required": ["name"]
+        }
+      ]
+    },
+    "requirementExpression": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "array"},
+        {"type": "object"}
+      ]
+    }
+  }
+}

@@ -1,4 +1,0 @@
-schema_version: "0.1"
-robot:
-  name: test_no_caps
-  description: 没有能力字段

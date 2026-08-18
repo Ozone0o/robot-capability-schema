@@ -1,19 +1,28 @@
-[build]
-extensions = "auto"
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "robot-capability-schema"
+name = "axiom"
 version = "0.1.0"
-description = "A YAML-based schema tool to describe robot capabilities"
+description = "The open capability contract for robots"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
+keywords = ["robotics", "capabilities", "open-standard", "robot-api"]
 dependencies = [
     "pyyaml>=6.0",
+    "jsonschema>=4.20",
 ]
 
 [project.scripts]
-robot-cap = "robot_capability_schema.cli:main"
+axiom = "axiom.cli:main"
+
+[tool.setuptools.data-files]
+"share/axiom/schema" = ["schema/axiom-1.0.schema.json"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.optional-dependencies]
 dev = [
